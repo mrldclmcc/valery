@@ -50,7 +50,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
   #wrap {
-    --pad-x: max(var(--space-3), calc((100% - var(--measure)) / 2));
+    --pad-x: max(var(--space-6), calc((100% - var(--measure)) / 2));
     position: absolute; inset: 0;
   }
 
@@ -95,6 +95,21 @@
   .blk-heading2 { color: var(--text-strong); text-shadow: 0.5px 0 0 currentColor; }
   .blk-heading3 { color: var(--text-strong); text-shadow: 0.35px 0 0 currentColor; }
   .blk-quote { color: var(--muted); }
+  /* Heading hashes hang in the left margin. They are absolutely positioned,
+     so they take no space in the line and cannot shift the text. */
+  .blk-heading1, .blk-heading2, .blk-heading3 { position: relative; }
+  .blk-heading1::before, .blk-heading2::before, .blk-heading3::before {
+    position: absolute; top: 0; left: 0; transform: translateX(-100%);
+    padding-right: 0.7em; line-height: normal; white-space: pre;
+    color: var(--syntax); text-shadow: none; pointer-events: none;
+  }
+  .blk-heading1::before { content: '#'; }
+  .blk-heading2::before { content: '##'; }
+  .blk-heading3::before { content: '###'; }
+  @media (max-width: 640px) {
+    #wrap { --pad-x: max(40px, calc((100% - var(--measure)) / 2)); }
+    .blk-heading1::before, .blk-heading2::before, .blk-heading3::before { font-size: 0.6em; padding-right: 0.5em; }
+  }
 
   .corner {
     position: absolute; bottom: var(--space-2);
@@ -165,8 +180,12 @@
    Inline   = text | ghost | variant | mark (strong, em, code)
    The textarea holds the Markdown form: block prefix + flattened content, joined by newlines. */
 
-const BLOCK_PREFIXES = { heading1: '# ', heading2: '## ', heading3: '### ', quote: '> ', bullet: '- ', numbered: '1. ' };
+/* Heading markers (#, ##, ###) are drawn in the left margin and are not part of the
+   text box content. List and quote markers stay inline. Export adds all of them. */
+const BLOCK_PREFIXES = { quote: '> ', bullet: '- ', numbered: '1. ' };
+const MARKDOWN_PREFIXES = { heading1: '# ', heading2: '## ', heading3: '### ', ...BLOCK_PREFIXES };
 const blockPrefix = (kind) => BLOCK_PREFIXES[kind] || '';
+const markdownPrefix = (kind) => MARKDOWN_PREFIXES[kind] || '';
 const blockContentStart = (b) => blockPrefix(b.kind).length;
 const blockLength = (b) => blockContentStart(b) + contentLength(b.content);
 
@@ -481,13 +500,43 @@ function wordRangeAt(text, offset) {
   return { start: s, end: e };
 }
 
+/* Older versions let pasted line breaks stay inside one block. These helpers
+   turn each such line break into a real block boundary. */
+function findNewline(nodes, base) {
+  let pos = base;
+  for (const node of nodes) {
+    const len = nodeLength(node);
+    if (node.type === 'text') { const k = node.text.indexOf('\n'); if (k >= 0) return pos + k; }
+    else if (node.type === 'ghost' || node.type === 'mark') {
+      const r = findNewline(node.content, node.type === 'mark' ? pos + MARK_OPEN[node.kind].length : pos);
+      if (r >= 0) return r;
+    }
+    pos += len;
+  }
+  return -1;
+}
+function splitBlockOnNewlines(block) {
+  const out = [];
+  let content = block.content, kind = block.kind, id = block.id;
+  for (;;) {
+    const i = findNewline(content, 0);
+    if (i < 0) break;
+    const [L, R] = splitContent(content, i);
+    deleteRange(R, 0, 1);
+    out.push({ id, kind, content: normalize(L) });
+    id = genId('b'); kind = 'paragraph'; content = normalize(R);
+  }
+  out.push({ id, kind, content });
+  return out;
+}
+
 /* DOCUMENT AND STORAGE */
 
 const STORE_KEY = 'valery:document:v1';
 let doc = { blocks: [{ id: 'b1', kind: 'paragraph', content: [] }] };
 try {
   const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-  if (saved && Array.isArray(saved.blocks) && saved.blocks.length) doc = saved;
+  if (saved && Array.isArray(saved.blocks) && saved.blocks.length) { doc = saved; doc.blocks = doc.blocks.flatMap(splitBlockOnNewlines); }
 } catch (err) { /* start with a blank page */ }
 let saveTimer = null;
 function scheduleSave() {
@@ -608,16 +657,36 @@ editor.addEventListener('paste', (e) => {
   e.preventDefault();
   const cd = e.clipboardData;
   const text = cd && (cd.getData('text/plain') || cd.getData('text'));
-  if (text) handleInsertText(editor.selectionStart, editor.selectionEnd, text);
+  if (text) handlePaste(editor.selectionStart, editor.selectionEnd, text);
 });
 editor.addEventListener('beforeinput', (e) => {
   const t = e.inputType, s = editor.selectionStart, en = editor.selectionEnd;
   e.preventDefault();
   if (t === 'insertText' || t === 'insertCompositionText' || t === 'insertReplacementText') handleInsertText(s, en, e.data ?? '');
   else if (t === 'insertParagraph' || t === 'insertLineBreak') handleEnter(s, en);
-  else if (t === 'deleteContentBackward') handleBackspace(s, en);
+  else if (t === 'deleteContentBackward' || t === 'deleteByCut') handleBackspace(s, en);
   else if (t === 'deleteContentForward') handleDeleteForward(s, en);
 });
+
+function selectionAsMarkdown(s, en) {
+  const lines = editor.value.slice(s, en).split('\n');
+  let off = s;
+  return lines.map((line) => {
+    const loc = locateFlat(off);
+    const hash = loc.offsetInBlock === 0 && /^heading/.test(loc.block.kind || '') ? markdownPrefix(loc.block.kind) : '';
+    off += line.length + 1;
+    return hash + line;
+  }).join('\n');
+}
+function onCopyOrCut(e) {
+  const s = editor.selectionStart, en = editor.selectionEnd;
+  if (s === en || !e.clipboardData) return;
+  e.clipboardData.setData('text/plain', selectionAsMarkdown(s, en));
+  e.preventDefault();
+  if (e.type === 'cut') handleBackspace(s, en);
+}
+editor.addEventListener('copy', onCopyOrCut);
+editor.addEventListener('cut', onCopyOrCut);
 
 function createVariantAt(flatStart, flatEnd, initialText) {
   const a = locateFlat(flatStart), b = locateFlat(flatEnd);
@@ -660,6 +729,37 @@ function handleInsertText(s, en, text) {
     loc.block.content = normalize(loc.block.content);
     render(); setCaret(s + text.length);
   }
+}
+
+const PREFIX_PARSE = [[/^### /, 'heading3'], [/^## /, 'heading2'], [/^# /, 'heading1'], [/^> /, 'quote'], [/^[-*] /, 'bullet'], [/^\d+\. /, 'numbered']];
+function parseLine(line) {
+  for (const [re, kind] of PREFIX_PARSE) { const m = line.match(re); if (m) return { kind, text: line.slice(m[0].length) }; }
+  return { kind: 'paragraph', text: line };
+}
+const textNodes = (t) => t ? [{ type: 'text', text: t }] : [];
+function handlePaste(s, en, text) {
+  text = text.replace(/\r\n?/g, '\n');
+  if (!text.includes('\n')) { handleInsertText(s, en, text); return; }
+  pushHistory('paste');
+  if (s !== en) deleteSelection(s, en);
+  const loc = locateFlat(s), blk = loc.block;
+  const lines = text.split('\n');
+  const [L, R] = splitContent(blk.content, loc.offsetInBlock);
+  const atStart = L.length === 0 && (!blk.kind || blk.kind === 'paragraph');
+  const first = atStart ? parseLine(lines[0]) : { kind: blk.kind, text: lines[0] };
+  blk.content = normalize([...L, ...textNodes(first.text)]);
+  if (atStart) blk.kind = first.kind;
+  const added = lines.slice(1).map((line) => {
+    const p = parseLine(line);
+    return { id: genId('b'), kind: p.kind, content: textNodes(p.text) };
+  });
+  const last = added[added.length - 1];
+  const tail = contentLength(last.content);
+  last.content = normalize([...last.content, ...R]);
+  doc.blocks.splice(loc.blockIndex + 1, 0, ...added);
+  render();
+  setCaret(flatOffsetOfBlockContent(loc.blockIndex + added.length) + tail);
+  scrollCaretIntoView();
 }
 
 /* Remove variants, marks, and ghosts that lie completely inside [start, end),
@@ -731,7 +831,7 @@ function handleEnter(s, en) {
 }
 
 function handleBackspace(s, en) {
-  if (s === en && s === 0) return;
+  if (s === en && s === 0 && !(doc.blocks[0].kind && doc.blocks[0].kind !== 'paragraph')) return;
   pushHistory('delete');
   if (s !== en) { deleteSelection(s, en); render(); setCaret(s); return; }
   const cur = locateFlat(s);
@@ -852,7 +952,8 @@ const doRevive = () => withSelection(reviveRange, 'revive');
 /* EXPORT */
 
 function exportMarkdown() {
-  const blob = new Blob([flatText() + '\n'], { type: 'text/markdown;charset=utf-8' });
+  const markdown = doc.blocks.map(b => markdownPrefix(b.kind) + flattenContent(b.content)).join('\n');
+  const blob = new Blob([markdown + '\n'], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = 'draft.md';
