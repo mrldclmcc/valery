@@ -49,6 +49,7 @@
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+  button, input { font: inherit; }
   #wrap {
     --pad-x: max(var(--space-6), calc((100% - var(--measure)) / 2));
     position: absolute; inset: 0;
@@ -74,6 +75,7 @@
   #overlay { overflow: hidden; pointer-events: none; color: var(--text); }
   #overlay-inner { will-change: transform; }
   #editor {
+    z-index: 2;
     background: transparent; color: transparent; caret-color: var(--primary);
     outline: none; resize: none; overflow: auto; scrollbar-width: none;
   }
@@ -83,10 +85,98 @@
   /* Cosmetics change only color, background, shadow, and underline,
      because these never change character widths. */
   .variant {
+    position: relative;
     text-decoration: underline dotted; text-decoration-color: var(--primary-soft);
     text-decoration-thickness: 1px; text-underline-offset: 6px;
+    transition: text-decoration-color 0.12s ease, text-decoration-thickness 0.12s ease;
   }
-  .ghost { opacity: 0.1; }
+  .variant.is-hovered {
+    text-decoration-color: var(--primary);
+    text-decoration-thickness: 1.5px;
+  }
+  .variant-dots {
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 5px);
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 6px;
+    padding: 0 2px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+    white-space: nowrap;
+  }
+  .variant-dots .variant-dot {
+    width: 5px;
+    height: 5px;
+    border: 1px solid var(--primary-soft);
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  }
+  .variant-dots .variant-dot.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.05);
+  }
+  .variant.is-hovered .variant-dots { opacity: 1; }
+  .block-shell {
+    display: inline-block;
+    width: 100%;
+    vertical-align: top;
+    min-height: 1.7em;
+    position: relative;
+  }
+  .block-variant {
+    position: relative;
+    display: block;
+    width: 100%;
+  }
+  .block-variant-marker {
+    position: absolute;
+    top: 0; bottom: 0; left: -12px; width: 1px;
+    background: var(--primary-soft);
+    opacity: 0.24;
+    transition: opacity 0.12s ease, background 0.12s ease;
+    pointer-events: none;
+  }
+  .block-variant-dots {
+    position: absolute;
+    left: -11px; top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .block-variant-dot {
+    width: 5px; height: 5px;
+    border: 1px solid var(--primary-soft);
+    border-radius: 50%;
+    background: transparent;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  }
+  .block-variant-dot.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.08);
+  }
+  .block-variant.is-hovered .block-variant-marker {
+    opacity: 0.72;
+    background: var(--primary);
+  }
+  .block-variant.is-hovered .block-variant-dots { opacity: 1; }
+
+  .ghost {
+    opacity: 0.1;
+    transition: opacity var(--ghost-reveal-duration, 220ms) ease;
+  }
+  .ghost.is-hovered { opacity: 0.28; }
   .md-syntax { color: var(--syntax); }
   .md-strong { color: var(--text-strong); text-shadow: 0.45px 0 0 currentColor; }
   .md-em { color: var(--text-strong); text-decoration: underline; text-decoration-color: var(--syntax); text-decoration-thickness: 1px; text-underline-offset: 5px; }
@@ -113,22 +203,73 @@
 
   .corner {
     position: absolute; bottom: var(--space-2);
+    z-index: 5;
     font-family: var(--font-ui); font-size: var(--size-ui); line-height: 1;
     color: var(--muted); opacity: 0.55;
     transition: opacity 0.2s;
   }
-  #count { left: var(--space-3); pointer-events: none; font-variant-numeric: tabular-nums; }
-  #actions { position: absolute; right: var(--space-3); bottom: var(--space-2); display: flex; gap: var(--space-2); }
+  #count { left: var(--space-3); pointer-events: auto; font-variant-numeric: tabular-nums; cursor: default; }
+  #actions { position: absolute; right: var(--space-3); bottom: var(--space-2); z-index: 5; display: flex; gap: var(--space-2); }
   #actions button {
+    position: relative;
     padding: var(--space-1); margin: calc(var(--space-1) * -1) 0;
     font-family: var(--font-ui); font-size: var(--size-ui); line-height: 1;
-    color: var(--muted); opacity: 0.55; transition: opacity 0.2s;
+    color: var(--muted); opacity: 0.55; transition: opacity 0.2s, color 0.2s, background 0.2s;
     background: transparent; border: 0; border-radius: 4px; cursor: pointer;
   }
   #actions button:hover, #actions button:focus-visible { opacity: 1; color: var(--text); background: var(--hover); }
   #actions button:active { background: var(--border); }
   #actions button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   #wrap:focus-within #count { opacity: 0.4; }
+
+  .corner-hint {
+    position: absolute;
+    left: 50%; bottom: calc(100% + 10px);
+    transform: translate(-50%, 4px);
+    padding: 5px 8px 6px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  #theme:hover .corner-hint, #theme:focus-visible .corner-hint {
+    opacity: 0.95;
+    transform: translate(-50%, 0);
+  }
+
+  #count-detail {
+    position: fixed;
+    left: 12px;
+    bottom: 48px;
+    z-index: 20;
+    min-width: 156px;
+    padding: 8px 10px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    line-height: 1.45;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(3px);
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  #count.is-hovered + #actions + #count-detail,
+  #count-detail.visible {
+    opacity: 0.96;
+    transform: translateY(0);
+  }
+  #count-detail strong { color: var(--text); font-weight: 500; }
 
   #ctxmenu {
     position: fixed; display: none; z-index: 100;
@@ -166,28 +307,32 @@
 <div id="wrap">
   <div id="overlay" aria-hidden="true"><div id="overlay-inner"></div></div>
   <textarea id="editor" aria-label="Document" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-  <div id="count" class="corner" aria-live="off">0 words</div>
+  <div id="count" class="corner">0 words</div>
   <div id="actions">
-    <button id="theme" type="button"></button>
+    <button id="theme" type="button" aria-label="Switch theme">
+      <span id="theme-label"></span>
+      <span class="corner-hint" id="theme-hint"></span>
+    </button>
     <button id="export" type="button" title="Export as Markdown (Ctrl+S)" aria-label="Export as Markdown">Export</button>
   </div>
+  <div id="count-detail" aria-hidden="true"></div>
 </div>
 <div id="ctxmenu" role="menu"></div>
 <script>
 /* MODEL
-   Document = { blocks: Block[] }
-   Block    = { id, kind?, content: Inline[] }  kind: paragraph | heading1-3 | quote | bullet | numbered
+   Document = { id, schemaVersion, blocks: Block[] }
+   Block    = { id, kind?, content: Inline[], variantGroup? }  kind: paragraph | heading1-3 | quote | bullet | numbered
+   Block variantGroup = { id, active, variants: [{ id, content: Inline[] }, ...] }
    Inline   = text | ghost | variant | mark (strong, em, code)
-   The textarea holds the Markdown form: block prefix + flattened content, joined by newlines. */
+   The textarea holds the Markdown form: block prefix + flattened active content, joined by newlines. */
 
-/* Heading markers (#, ##, ###) are drawn in the left margin and are not part of the
-   text box content. List and quote markers stay inline. Export adds all of them. */
+const DOCUMENT_SCHEMA_VERSION = 3;
 const BLOCK_PREFIXES = { quote: '> ', bullet: '- ', numbered: '1. ' };
 const MARKDOWN_PREFIXES = { heading1: '# ', heading2: '## ', heading3: '### ', ...BLOCK_PREFIXES };
 const blockPrefix = (kind) => BLOCK_PREFIXES[kind] || '';
 const markdownPrefix = (kind) => MARKDOWN_PREFIXES[kind] || '';
 const blockContentStart = (b) => blockPrefix(b.kind).length;
-const blockLength = (b) => blockContentStart(b) + contentLength(b.content);
+const blockLength = (b) => blockContentStart(b) + contentLength(activeBlockContent(b));
 
 const INPUT_RULES = [
   { re: /^### $/, kind: 'heading3' }, { re: /^## $/, kind: 'heading2' }, { re: /^# $/, kind: 'heading1' },
@@ -230,15 +375,173 @@ function normalize(content) {
       const inner = normalize(node.content);
       if (inner.length) out.push({ type: 'ghost', id: node.id, content: inner });
     } else if (node.type === 'variant') {
-      out.push({ type: 'variant', id: node.id, active: node.active, variants: node.variants.map(normalize) });
+      const variants = Array.isArray(node.variants) && node.variants.length ? node.variants.map(normalize) : [[]];
+      const active = Math.max(0, Math.min(Number.isInteger(node.active) ? node.active : 0, variants.length - 1));
+      out.push({ type: 'variant', id: node.id, active, variants });
     } else if (node.type === 'mark') {
       const inner = normalize(node.content);
       const last = out[out.length - 1];
       if (last && last.type === 'mark' && last.kind === node.kind) last.content = normalize([...last.content, ...inner]);
-      else out.push({ type: 'mark', id: node.id, kind: node.kind, content: inner });
+      else if (inner.length || node.kind) out.push({ type: 'mark', id: node.id, kind: node.kind, content: inner });
     }
   }
   return out;
+}
+
+function cloneContentWithNewIds(content) {
+  return content.map((node) => {
+    if (node.type === 'text') return { type: 'text', text: node.text };
+    if (node.type === 'ghost') return { type: 'ghost', id: genId('g'), content: cloneContentWithNewIds(node.content || []) };
+    if (node.type === 'variant') return { type: 'variant', id: genId('v'), active: node.active || 0, variants: (node.variants || []).map(cloneContentWithNewIds) };
+    if (node.type === 'mark') return { type: 'mark', id: genId('mk'), kind: node.kind, content: cloneContentWithNewIds(node.content || []) };
+    return node;
+  });
+}
+function activeBlockVariant(block) {
+  const group = block && block.variantGroup;
+  if (!group || !Array.isArray(group.variants) || !group.variants.length) return null;
+  return group.variants[Math.max(0, Math.min(group.active || 0, group.variants.length - 1))];
+}
+function activeBlockContent(block) {
+  const v = activeBlockVariant(block);
+  return v ? v.content : block.content;
+}
+function blockHasVariants(block) {
+  return !!(block && block.variantGroup && Array.isArray(block.variantGroup.variants) && block.variantGroup.variants.length > 1);
+}
+function syncActiveBlockContent(block) {
+  const active = activeBlockVariant(block);
+  if (active) block.content = active.content;
+  return block.content;
+}
+function ensureBlockVariantIds(block) {
+  if (!block.variantGroup) {
+    if (!Array.isArray(block.content)) block.content = [];
+    return;
+  }
+  const group = block.variantGroup;
+  if (!group.id) group.id = genId('bv');
+  if (!Array.isArray(group.variants) || !group.variants.length) { delete block.variantGroup; return; }
+  group.variants = group.variants.map((v) => ({
+    id: v && v.id ? v.id : genId('bvv'),
+    content: normalize(v && Array.isArray(v.content) ? v.content : [])
+  }));
+  group.active = Math.max(0, Math.min(Number.isInteger(group.active) ? group.active : 0, group.variants.length - 1));
+  group.variants.forEach(v => ensureContentIds(v.content));
+  syncActiveBlockContent(block);
+}
+function createBlockVariantGroup(block) {
+  const current = activeBlockContent(block);
+  const group = {
+    id: genId('bv'),
+    active: 0,
+    variants: [
+      { id: genId('bvv'), content: current },
+    ],
+  };
+  block.variantGroup = group;
+  syncActiveBlockContent(block);
+  return group;
+}
+function mergeBlocksPreservingVariants(leftBlock, rightBlock) {
+  const leftHas = blockHasVariants(leftBlock);
+  const rightHas = blockHasVariants(rightBlock);
+  if (!leftHas && !rightHas) {
+    leftBlock.content = normalize([...activeBlockContent(leftBlock), ...activeBlockContent(rightBlock)]);
+    return;
+  }
+  if (leftHas && !rightHas) {
+    const rightContent = activeBlockContent(rightBlock);
+    leftBlock.variantGroup.variants = leftBlock.variantGroup.variants.map(v => ({
+      ...v, content: normalize([...v.content, ...cloneContentWithNewIds(rightContent)])
+    }));
+    syncActiveBlockContent(leftBlock);
+    return;
+  }
+  if (!leftHas && rightHas) {
+    const leftContent = activeBlockContent(leftBlock);
+    const variants = rightBlock.variantGroup.variants.map(v => ({
+      id: genId('bvv'),
+      content: normalize([...cloneContentWithNewIds(leftContent), ...v.content]),
+    }));
+    leftBlock.variantGroup = {
+      id: genId('bv'),
+      active: rightBlock.variantGroup.active,
+      variants,
+    };
+    syncActiveBlockContent(leftBlock);
+    return;
+  }
+  const leftGroup = leftBlock.variantGroup, rightGroup = rightBlock.variantGroup;
+  const variants = [];
+  for (let li = 0; li < leftGroup.variants.length; li++) {
+    for (let ri = 0; ri < rightGroup.variants.length; ri++) {
+      variants.push({
+        id: genId('bvv'),
+        content: normalize([
+          ...cloneContentWithNewIds(leftGroup.variants[li].content),
+          ...cloneContentWithNewIds(rightGroup.variants[ri].content),
+        ]),
+      });
+    }
+  }
+  leftBlock.variantGroup = {
+    id: genId('bv'),
+    active: leftBlock.variantGroup.active * rightGroup.variants.length + rightBlock.variantGroup.active,
+    variants,
+  };
+  syncActiveBlockContent(leftBlock);
+}
+function truncateWords(s, count) {
+  const words = s.replace(/\s+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (words.length <= count) return words.join(' ');
+  return words.slice(0, count).join(' ') + '…';
+}
+
+function ensureContentIds(content) {
+  for (const node of content) {
+    if (node.type === 'ghost') {
+      if (!node.id) node.id = genId('g');
+      ensureContentIds(node.content || []);
+    } else if (node.type === 'variant') {
+      if (!node.id) node.id = genId('v');
+      if (!Array.isArray(node.variants) || !node.variants.length) node.variants = [[]];
+      if (!Number.isInteger(node.active)) node.active = 0;
+      node.active = Math.max(0, Math.min(node.active, node.variants.length - 1));
+      node.variants.forEach(ensureContentIds);
+    } else if (node.type === 'mark') {
+      if (!node.id) node.id = genId('mk');
+      ensureContentIds(node.content || []);
+    }
+  }
+}
+function ensureDocumentIds(document) {
+  if (!document.id) document.id = genId('d');
+  document.schemaVersion = DOCUMENT_SCHEMA_VERSION;
+  if (!Array.isArray(document.blocks) || !document.blocks.length) {
+    document.blocks = [{ id: genId('b'), kind: 'paragraph', content: [] }];
+  }
+  for (const block of document.blocks) {
+    if (!block.id) block.id = genId('b');
+    if (!block.kind) block.kind = 'paragraph';
+    if (!Array.isArray(block.content)) block.content = [];
+    if (block.variantGroup && block.kind !== 'paragraph') delete block.variantGroup;
+    if (block.variantGroup) {
+      ensureBlockVariantIds(block);
+    } else {
+      ensureContentIds(block.content);
+      block.content = normalize(block.content);
+    }
+  }
+  document.blocks = document.blocks.flatMap(splitBlockOnNewlines);
+  return document;
+}
+function newDocument() {
+  return ensureDocumentIds({
+    id: genId('d'),
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
+    blocks: [{ id: genId('b'), kind: 'paragraph', content: [] }],
+  });
 }
 
 function snapOffset(content, offset, dir) {
@@ -399,7 +702,7 @@ function deleteRange(content, start, end) { for (let p = end - 1; p >= start; p-
 function findNodeById(content, id) {
   for (const n of content) {
     if (n.id === id) return n;
-    const kids = n.type === 'variant' ? [n.variants[n.active]] : n.content ? [n.content] : [];
+    const kids = n.type === 'variant' ? (n.variants || []) : n.content ? [n.content] : [];
     for (const k of kids) { const r = findNodeById(k, id); if (r) return r; }
   }
   return null;
@@ -510,12 +813,39 @@ function findNewline(nodes, base) {
     else if (node.type === 'ghost' || node.type === 'mark') {
       const r = findNewline(node.content, node.type === 'mark' ? pos + MARK_OPEN[node.kind].length : pos);
       if (r >= 0) return r;
+    } else if (node.type === 'variant') {
+      const r = findNewline(node.variants[node.active], pos);
+      if (r >= 0) return r;
     }
     pos += len;
   }
   return -1;
 }
 function splitBlockOnNewlines(block) {
+  const active = activeBlockContent(block);
+  const firstNewline = findNewline(active, 0);
+  if (firstNewline < 0) {
+    syncActiveBlockContent(block);
+    return [block];
+  }
+  if (blockHasVariants(block)) {
+    const out = [];
+    let current = block;
+    for (;;) {
+      const currentContent = activeBlockContent(current);
+      const i = findNewline(currentContent, 0);
+      if (i < 0) { out.push(current); break; }
+      const split = splitBlockVariantGroupAt(current, i);
+      if (!split) break;
+      for (const v of split.right.variantGroup.variants) {
+        if (contentLength(v.content)) deleteRange(v.content, 0, 1);
+      }
+      syncActiveBlockContent(split.right);
+      out.push(split.left);
+      current = split.right;
+    }
+    return out;
+  }
   const out = [];
   let content = block.content, kind = block.kind, id = block.id;
   for (;;) {
@@ -529,26 +859,126 @@ function splitBlockOnNewlines(block) {
   out.push({ id, kind, content });
   return out;
 }
-
 /* DOCUMENT AND STORAGE */
 
-const STORE_KEY = 'valery:document:v1';
-let doc = { blocks: [{ id: 'b1', kind: 'paragraph', content: [] }] };
-try {
-  const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-  if (saved && Array.isArray(saved.blocks) && saved.blocks.length) { doc = saved; doc.blocks = doc.blocks.flatMap(splitBlockOnNewlines); }
-} catch (err) { /* start with a blank page */ }
+let doc = newDocument();
+
+const IDB_NAME = 'valery';
+const IDB_VERSION = 1;
+const IDB_DOCUMENTS = 'documents';
+const IDB_META = 'meta';
+const META_CURRENT_DOCUMENT = 'currentDocumentId';
+let idbPromise = null;
 let saveTimer = null;
+let saveQueue = Promise.resolve();
+let persistenceReady = false;
+
+function openValeryDB() {
+  if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
+  if (idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_DOCUMENTS)) db.createObjectStore(IDB_DOCUMENTS, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(IDB_META)) db.createObjectStore(IDB_META, { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('Could not open IndexedDB'));
+  });
+  return idbPromise;
+}
+function idbGet(storeName, key) {
+  return openValeryDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error('IndexedDB read failed'));
+  }));
+}
+function idbPut(storeName, value) {
+  return openValeryDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+  }));
+}
+function localStorageDocument() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('valery:document:v1'));
+    if (saved && Array.isArray(saved.blocks) && saved.blocks.length) {
+      return ensureDocumentIds({ ...saved, id: saved.id || genId('d'), schemaVersion: DOCUMENT_SCHEMA_VERSION, blocks: saved.blocks.flatMap(splitBlockOnNewlines) });
+    }
+  } catch (err) {}
+  return null;
+}
+async function loadStoredDocument() {
+  try {
+    const current = await idbGet(IDB_META, META_CURRENT_DOCUMENT);
+    if (current && current.id) {
+      const record = await idbGet(IDB_DOCUMENTS, current.id);
+      if (record && Array.isArray(record.blocks)) {
+        return ensureDocumentIds({ id: record.id, schemaVersion: DOCUMENT_SCHEMA_VERSION, blocks: record.blocks });
+      }
+    }
+  } catch (err) {
+    /* Fall through to migration or localStorage fallback. */
+  }
+
+  const migrated = localStorageDocument();
+  if (migrated) {
+    try {
+      await persistDocumentNow(migrated);
+      return migrated;
+    } catch (err) {
+      return migrated;
+    }
+  }
+  return newDocument();
+}
+function persistDocumentNow(document = doc) {
+  const normalized = ensureDocumentIds(JSON.parse(JSON.stringify(document)));
+  const record = {
+    id: normalized.id,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
+    updatedAt: Date.now(),
+    blocks: normalized.blocks,
+  };
+  return openValeryDB().then(async (db) => {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_DOCUMENTS, 'readwrite');
+      tx.objectStore(IDB_DOCUMENTS).put(record);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+    });
+    await idbPut(IDB_META, { key: META_CURRENT_DOCUMENT, id: normalized.id });
+  }).catch((err) => {
+    /* Fallback keeps the app usable when IndexedDB is blocked or unavailable. */
+    try {
+      localStorage.setItem('valery:document:v1', JSON.stringify(normalized));
+    } catch (e) {}
+    throw err;
+  });
+}
 function scheduleSave() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(STORE_KEY, JSON.stringify(doc)); } catch (err) {} }, 400);
+  saveTimer = setTimeout(() => {
+    const snapshotDoc = { id: doc.id, schemaVersion: DOCUMENT_SCHEMA_VERSION, blocks: doc.blocks };
+    saveQueue = saveQueue.then(() => persistDocumentNow(snapshotDoc)).catch(() => {});
+  }, 400);
 }
 
-const flatText = () => doc.blocks.map(b => blockPrefix(b.kind) + flattenContent(b.content)).join('\n');
+const flatText = () => doc.blocks.map(b => blockPrefix(b.kind) + flattenContent(activeBlockContent(b))).join('\n');
 function flatOffsetOfBlockContent(i) {
   let pos = 0;
   for (let k = 0; k < i; k++) pos += blockLength(doc.blocks[k]) + 1;
   return pos + blockContentStart(doc.blocks[i]);
+}
+function flatOffsetOfBlockStart(i) {
+  return flatOffsetOfBlockContent(i) - blockContentStart(doc.blocks[i]);
 }
 function locateFlat(flatOffset) {
   let pos = 0;
@@ -561,22 +991,45 @@ function locateFlat(flatOffset) {
     pos += blen + 1;
   }
   const i = doc.blocks.length - 1, b = doc.blocks[i];
-  return { blockIndex: i, block: b, offsetInBlock: contentLength(b.content), inPrefix: false };
+  return { blockIndex: i, block: b, offsetInBlock: contentLength(activeBlockContent(b)), inPrefix: false };
 }
 
 /* RENDER */
 
 const editor = document.getElementById('editor');
+const overlay = document.getElementById('overlay');
 const overlayInner = document.getElementById('overlay-inner');
 const countEl = document.getElementById('count');
+const countDetail = document.getElementById('count-detail');
+const themeBtn = document.getElementById('theme');
+const themeLabel = document.getElementById('theme-label');
+const themeHint = document.getElementById('theme-hint');
+
+const ui = {
+  hoveredVariantId: null,
+  hoveredGhostId: null,
+  hoveredVariantVisible: false,
+  hoveredBlockId: null,
+  hoveredBlockVisible: false,
+  hoverTimer: null,
+  blockHoverTimer: null,
+  ghostRevealTimer: null,
+  lastPointer: null,
+  pointerFrame: 0,
+  countDetailVisible: false,
+  pendingBlockVariantReplacement: null,
+};
 
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function renderInline(content) {
   let html = '';
   for (const node of content) {
     if (node.type === 'text') html += escapeHtml(node.text);
-    else if (node.type === 'ghost') html += `<span class="ghost">${renderInline(node.content)}</span>`;
-    else if (node.type === 'variant') html += `<span class="variant">${renderInline(node.variants[node.active])}</span>`;
+    else if (node.type === 'ghost') html += `<span class="ghost" data-ghost-id="${escapeHtml(node.id)}">${renderInline(node.content)}</span>`;
+    else if (node.type === 'variant') {
+      const dots = node.variants.map((_, i) => `<span class="variant-dot${i === node.active ? ' active' : ''}"></span>`).join('');
+      html += `<span class="variant" data-variant-id="${escapeHtml(node.id)}">${renderInline(node.variants[node.active])}<span class="variant-dots" aria-hidden="true">${dots}</span></span>`;
+    }
     else if (node.type === 'mark') {
       html += `<span class="md-syntax">${escapeHtml(MARK_OPEN[node.kind])}</span>`;
       html += `<span class="md-${node.kind}">${renderInline(node.content)}</span>`;
@@ -585,30 +1038,80 @@ function renderInline(content) {
   }
   return html;
 }
-function renderBlock(block) {
+function renderBlock(block, blockIndex) {
   const prefix = blockPrefix(block.kind);
-  const inner = renderInline(block.content);
-  return (prefix ? `<span class="md-syntax">${escapeHtml(prefix)}</span>` : '') +
+  const content = activeBlockContent(block);
+  const inner = renderInline(content);
+  const body = (prefix ? `<span class="md-syntax">${escapeHtml(prefix)}</span>` : '') +
     (block.kind && block.kind !== 'paragraph' ? `<span class="blk-${block.kind}">${inner}</span>` : inner);
+  if (blockHasVariants(block)) {
+    const group = block.variantGroup;
+    const dots = group.variants.map((_, i) => `<span class="block-variant-dot${i === group.active ? ' active' : ''}"></span>`).join('');
+    return `<span class="block-shell block-variant-shell" data-block-index="${blockIndex}" data-block-id="${escapeHtml(block.id)}"><span class="block-variant" data-block-id="${escapeHtml(block.id)}"><span class="block-variant-marker" aria-hidden="true"><span class="block-variant-dots">${dots}</span></span>${body}</span></span>`;
+  }
+  return `<span class="block-shell" data-block-index="${blockIndex}" data-block-id="${escapeHtml(block.id)}">${body}</span>`;
 }
 function wordCount(text) {
   const plain = text.replace(/^(#{1,3}|>|-|\d+\.)[ \t]/gm, '').replace(/[*`]/g, '');
   const m = plain.match(/\S+/g);
   return m ? m.length : 0;
 }
-function render() {
+function contentPlainText(content, includeGhosts = true) {
+  let s = '';
+  for (const node of content) {
+    if (node.type === 'text') s += node.text;
+    else if (node.type === 'ghost') { if (includeGhosts) s += contentPlainText(node.content, true); }
+    else if (node.type === 'variant') s += contentPlainText(node.variants[node.active], includeGhosts);
+    else if (node.type === 'mark') s += MARK_OPEN[node.kind] + contentPlainText(node.content, includeGhosts) + MARK_CLOSE[node.kind];
+  }
+  return s;
+}
+function blockTextForCount(block, includeGhosts) {
+  return blockPrefix(block.kind) + contentPlainText(activeBlockContent(block), includeGhosts);
+}
+function statsForDocument() {
+  const totalText = doc.blocks.map(b => blockTextForCount(b, true)).join('\n');
+  const visibleText = doc.blocks.map(b => blockTextForCount(b, false)).join('\n');
+  let ghostText = '';
+  let variantPoints = 0;
+  function walk(nodes) {
+    for (const node of nodes) {
+      if (node.type === 'ghost') ghostText += contentPlainText(node.content, true) + ' ';
+      else if (node.type === 'variant') {
+        variantPoints++;
+        node.variants.forEach(walk);
+      } else if (node.type === 'mark') walk(node.content);
+    }
+  }
+  doc.blocks.forEach(b => walk(b.content));
+  return {
+    total: wordCount(totalText),
+    visible: wordCount(visibleText),
+    ghosted: wordCount(ghostText),
+    variants: variantPoints,
+  };
+}
+function render(options = {}) {
   const text = flatText();
   const st = editor.scrollTop, sl = editor.scrollLeft;
   editor.value = text;
-  overlayInner.innerHTML = doc.blocks.map(renderBlock).join('\n');
+  overlayInner.innerHTML = doc.blocks.map(renderBlock).join('');
   editor.scrollTop = st; editor.scrollLeft = sl;
   syncOverlay();
-  const n = wordCount(text);
+  const stats = statsForDocument();
+  const n = stats.total;
   countEl.textContent = n + (n === 1 ? ' word' : ' words');
-  scheduleSave();
+  countDetail.innerHTML = `<strong>${stats.visible}</strong> visible` +
+    (stats.ghosted ? ` · <strong>${stats.ghosted}</strong> ghosted` : '') +
+    (stats.variants ? ` · <strong>${stats.variants}</strong> variation${stats.variants === 1 ? '' : 's'}` : '');
+  if (options.persist !== false) scheduleSave();
+  refreshHoverFromLastPointer();
 }
 function syncOverlay() { overlayInner.style.transform = `translate(${-editor.scrollLeft}px, ${-editor.scrollTop}px)`; }
 function setCaret(pos) { pos = Math.max(0, Math.min(pos, editor.value.length)); editor.setSelectionRange(pos, pos); }
+function clampSelection(start, end, length = editor.value.length) {
+  return [Math.max(0, Math.min(start, length)), Math.max(0, Math.min(end, length))];
+}
 
 /* HISTORY */
 
@@ -626,6 +1129,7 @@ function pushHistory(opKey) {
 }
 function applySnapshot(state) {
   doc.blocks = state.blocks;
+  ensureDocumentIds(doc);
   render();
   editor.focus();
   const len = editor.value.length;
@@ -652,7 +1156,9 @@ function applyInputRules(block) {
   return false;
 }
 
-editor.addEventListener('scroll', syncOverlay);
+editor.addEventListener('scroll', () => { syncOverlay(); closeCtxMenu(); });
+window.addEventListener('mousemove', onEditorPointerMove);
+window.addEventListener('blur', clearHoverState);
 editor.addEventListener('paste', (e) => {
   e.preventDefault();
   const cd = e.clipboardData;
@@ -691,12 +1197,12 @@ editor.addEventListener('cut', onCopyOrCut);
 function createVariantAt(flatStart, flatEnd, initialText) {
   const a = locateFlat(flatStart), b = locateFlat(flatEnd);
   if (a.block !== b.block) return null;
-  const [left, mid, right] = splitRange(a.block.content, a.offsetInBlock, b.offsetInBlock);
+  const [left, mid, right] = splitRange(activeBlockContent(a.block), a.offsetInBlock, b.offsetInBlock);
   if (mid.length === 1 && mid[0].type === 'variant') {
     const v = mid[0];
     v.variants.push([{ type: 'text', text: initialText }]);
     v.active = v.variants.length - 1;
-    a.block.content = normalize(a.block.content);
+    a.block.content = normalize(activeBlockContent(a.block));
     return { variant: v, block: a.block, blockIndex: a.blockIndex };
   }
   const variant = { type: 'variant', id: genId('v'), active: 1, variants: [mid, [{ type: 'text', text: initialText }]] };
@@ -706,37 +1212,42 @@ function createVariantAt(flatStart, flatEnd, initialText) {
 
 function handleInsertText(s, en, text) {
   if (!text) return;
+  if (ui.pendingBlockVariantReplacement) {
+    const pendingEntry = findBlockVariantEntry(doc, ui.pendingBlockVariantReplacement.blockId);
+    if (pendingEntry && replacePendingBlockVariant(pendingEntry, text, s, en)) return;
+    ui.pendingBlockVariantReplacement = null;
+  }
   pushHistory('insert');
   if (s !== en) { const t = trimSelection(s, en); if (t) { s = t[0]; en = t[1]; } }
   if (s === en) {
     const loc = locateFlat(s);
-    insertTextAt(loc.block.content, loc.offsetInBlock, text);
-    loc.block.content = normalize(loc.block.content);
+    insertTextAt(activeBlockContent(loc.block), loc.offsetInBlock, text);
+    loc.block.content = normalize(activeBlockContent(loc.block));
     if (applyInputRules(loc.block)) { render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex)); return; }
     render(); setCaret(s + text.length);
     return;
   }
   const res = createVariantAt(s, en, text);
   if (res) {
-    const node = findNodeById(res.block.content, res.variant.id);
-    const range = node && findNodeRange(res.block.content, node);
+    const node = findNodeById(activeBlockContent(res.block), res.variant.id);
+    const range = node && findNodeRange(activeBlockContent(res.block), node);
     render();
     setCaret(range ? flatOffsetOfBlockContent(res.blockIndex) + range.start + text.length : s + text.length);
   } else {
     deleteSelection(s, en);
     const loc = locateFlat(s);
-    insertTextAt(loc.block.content, loc.offsetInBlock, text);
-    loc.block.content = normalize(loc.block.content);
+    insertTextAt(activeBlockContent(loc.block), loc.offsetInBlock, text);
+    loc.block.content = normalize(activeBlockContent(loc.block));
     render(); setCaret(s + text.length);
   }
 }
 
 const PREFIX_PARSE = [[/^### /, 'heading3'], [/^## /, 'heading2'], [/^# /, 'heading1'], [/^> /, 'quote'], [/^[-*] /, 'bullet'], [/^\d+\. /, 'numbered']];
+const textNodes = (t) => t ? [{ type: 'text', text: t }] : [];
 function parseLine(line) {
   for (const [re, kind] of PREFIX_PARSE) { const m = line.match(re); if (m) return { kind, text: line.slice(m[0].length) }; }
   return { kind: 'paragraph', text: line };
 }
-const textNodes = (t) => t ? [{ type: 'text', text: t }] : [];
 function handlePaste(s, en, text) {
   text = text.replace(/\r\n?/g, '\n');
   if (!text.includes('\n')) { handleInsertText(s, en, text); return; }
@@ -744,7 +1255,7 @@ function handlePaste(s, en, text) {
   if (s !== en) deleteSelection(s, en);
   const loc = locateFlat(s), blk = loc.block;
   const lines = text.split('\n');
-  const [L, R] = splitContent(blk.content, loc.offsetInBlock);
+  const [L, R] = splitContent(activeBlockContent(blk), loc.offsetInBlock);
   const atStart = L.length === 0 && (!blk.kind || blk.kind === 'paragraph');
   const first = atStart ? parseLine(lines[0]) : { kind: blk.kind, text: lines[0] };
   blk.content = normalize([...L, ...textNodes(first.text)]);
@@ -753,6 +1264,9 @@ function handlePaste(s, en, text) {
     const p = parseLine(line);
     return { id: genId('b'), kind: p.kind, content: textNodes(p.text) };
   });
+  if (!added.length) {
+    added.push({ id: genId('b'), kind: 'paragraph', content: [] });
+  }
   const last = added[added.length - 1];
   const tail = contentLength(last.content);
   last.content = normalize([...last.content, ...R]);
@@ -787,7 +1301,7 @@ function pruneCovered(nodes, base, start, end) {
   return { content: out, removed };
 }
 function deleteContentRange(block, start, end) {
-  const r = pruneCovered(block.content, 0, start, end);
+  const r = pruneCovered(activeBlockContent(block), 0, start, end);
   block.content = r.content;
   deleteRange(block.content, start, end - r.removed);
   block.content = normalize(block.content);
@@ -798,36 +1312,59 @@ function deleteSelection(s, en) {
   if (a.block === b.block) {
     deleteContentRange(a.block, a.offsetInBlock, b.offsetInBlock);
   } else {
-    deleteContentRange(a.block, a.offsetInBlock, contentLength(a.block.content));
+    deleteContentRange(a.block, a.offsetInBlock, contentLength(activeBlockContent(a.block)));
     deleteContentRange(b.block, 0, b.offsetInBlock);
-    a.block.content = normalize([...a.block.content, ...b.block.content]);
+    if (blockHasVariants(a.block) || blockHasVariants(b.block)) {
+      const merged = { id: a.block.id, kind: a.block.kind, content: normalize([...activeBlockContent(a.block), ...activeBlockContent(b.block)]) };
+      delete a.block.variantGroup;
+      a.block.content = merged.content;
+    } else {
+      a.block.content = normalize([...activeBlockContent(a.block), ...activeBlockContent(b.block)]);
+    }
     for (let i = b.blockIndex; i > a.blockIndex; i--) doc.blocks.splice(i, 1);
   }
-  // Clearing the whole page returns it to a plain blank paragraph.
   if (s === 0 && doc.blocks.length === 1 && !contentLength(doc.blocks[0].content)) doc.blocks[0].kind = 'paragraph';
 }
 
 const newKindAfter = (b) => (b.kind === 'bullet' || b.kind === 'numbered' || b.kind === 'quote') ? b.kind : 'paragraph';
 
+function splitBlockVariantGroupAt(block, offset) {
+  if (!blockHasVariants(block)) return null;
+  const group = block.variantGroup;
+  const leftVariants = [], rightVariants = [];
+  for (const v of group.variants) {
+    const at = Math.max(0, Math.min(offset, contentLength(v.content)));
+    const [L, R] = splitContent(v.content, at);
+    leftVariants.push({ id: v.id, content: normalize(L) });
+    rightVariants.push({ id: genId('bvv'), content: normalize(R) });
+  }
+  return {
+    left: { id: block.id, kind: block.kind, variantGroup: { id: group.id, active: group.active, variants: leftVariants } },
+    right: { id: genId('b'), kind: 'paragraph', variantGroup: { id: genId('bv'), active: group.active, variants: rightVariants } },
+  };
+}
 function handleEnter(s, en) {
+  ui.pendingBlockVariantReplacement = null;
   pushHistory('enter');
   if (s !== en) { deleteSelection(s, en); en = s; }
-  const loc = locateFlat(s), len = contentLength(loc.block.content), kind = loc.block.kind;
-  if (len === 0 && kind && kind !== 'paragraph') {
-    loc.block.kind = 'paragraph';
-    render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex));
-    return;
+  const loc = locateFlat(s), content = activeBlockContent(loc.block), len = contentLength(content), kind = loc.block.kind;
+  if (len === 0 && kind && kind !== 'paragraph') { loc.block.kind = 'paragraph'; render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex)); return; }
+  if (blockHasVariants(loc.block)) {
+    const split = splitBlockVariantGroupAt(loc.block, loc.offsetInBlock);
+    if (split) {
+      doc.blocks.splice(loc.blockIndex, 1, split.left, split.right);
+      ensureDocumentIds(doc); render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex + 1)); scrollCaretIntoView(); return;
+    }
   }
   const newKind = newKindAfter(loc.block);
   if (loc.offsetInBlock >= len) {
     doc.blocks.splice(loc.blockIndex + 1, 0, { id: genId('b'), kind: newKind, content: [] });
   } else {
-    const [L, R] = splitContent(loc.block.content, loc.offsetInBlock);
+    const [L, R] = splitContent(content, loc.offsetInBlock);
     loc.block.content = normalize(L);
     doc.blocks.splice(loc.blockIndex + 1, 0, { id: genId('b'), kind: newKind, content: normalize(R) });
   }
-  render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex + 1));
-  scrollCaretIntoView();
+  render(); setCaret(flatOffsetOfBlockContent(loc.blockIndex + 1)); scrollCaretIntoView();
 }
 
 function handleBackspace(s, en) {
@@ -843,13 +1380,13 @@ function handleBackspace(s, en) {
   if (s === 0) return;
   const a = locateFlat(s - 1), b = locateFlat(s);
   if (a.block !== b.block) {
-    a.block.content = normalize([...a.block.content, ...b.block.content]);
+    mergeBlocksPreservingVariants(a.block, b.block);
     doc.blocks.splice(b.blockIndex, 1);
     render(); setCaret(s - 1);
     return;
   }
-  if (!deleteCharAt(a.block.content, a.offsetInBlock)) return;
-  a.block.content = normalize(a.block.content);
+  if (!deleteCharAt(activeBlockContent(a.block), a.offsetInBlock)) return;
+  a.block.content = normalize(activeBlockContent(a.block));
   render(); setCaret(s - 1);
 }
 
@@ -859,17 +1396,16 @@ function handleDeleteForward(s, en) {
   if (s !== en) { deleteSelection(s, en); render(); setCaret(s); return; }
   const a = locateFlat(s), b = locateFlat(s + 1);
   if (a.block !== b.block) {
-    a.block.content = normalize([...a.block.content, ...b.block.content]);
+    mergeBlocksPreservingVariants(a.block, b.block);
     doc.blocks.splice(b.blockIndex, 1);
     render(); setCaret(s);
     return;
   }
-  if (!deleteCharAt(a.block.content, a.offsetInBlock)) return;
-  a.block.content = normalize(a.block.content);
+  if (!deleteCharAt(activeBlockContent(a.block), a.offsetInBlock)) return;
+  a.block.content = normalize(activeBlockContent(a.block));
   render(); setCaret(s);
 }
 
-/* Keep the caret visible when it moves below the screen. */
 function scrollCaretIntoView() {
   const probe = document.createElement('div');
   const lh = parseFloat(getComputedStyle(editor).lineHeight) || 32;
@@ -892,15 +1428,15 @@ function toggleMark(kind) {
   const a = locateFlat(s), b = locateFlat(en);
   if (a.block !== b.block) return;
   pushHistory('mark');
-  const existing = findMarkContaining(a.block.content, a.offsetInBlock, b.offsetInBlock, kind);
+  const existing = findMarkContaining(activeBlockContent(a.block), a.offsetInBlock, b.offsetInBlock, kind);
   if (existing) {
     const wasStart = a.offsetInBlock;
-    a.block.content = normalize(unwrapMarkIn(a.block.content, existing));
+    a.block.content = normalize(unwrapMarkIn(activeBlockContent(a.block), existing));
     render();
     setCaret(flatOffsetOfBlockContent(a.blockIndex) + Math.max(0, wasStart - MARK_OPEN[kind].length));
     return;
   }
-  const [L, mid, R] = splitRange(a.block.content, a.offsetInBlock, b.offsetInBlock);
+  const [L, mid, R] = splitRange(activeBlockContent(a.block), a.offsetInBlock, b.offsetInBlock);
   const mark = { type: 'mark', id: genId('mk'), kind, content: mid };
   a.block.content = normalize([...L, mark, ...R]);
   render();
@@ -917,7 +1453,7 @@ function toggleMark(kind) {
 
 function cycleAtCaret(dir) {
   const loc = locateFlat(editor.selectionStart);
-  const v = variantAtOffset(loc.block.content, loc.offsetInBlock);
+  const v = variantAtOffset(activeBlockContent(loc.block), loc.offsetInBlock);
   if (!v) return;
   const range = findNodeRange(loc.block.content, v);
   if (!range) return;
@@ -927,13 +1463,102 @@ function cycleAtCaret(dir) {
   render();
   setCaret(flatOffsetOfBlockContent(loc.blockIndex) + range.start + Math.min(rel, contentLength(v.variants[v.active])));
 }
+function cycleVariantPreservingSelection(variant, dir) {
+  const entry = findVariantEntry(doc, variant.id);
+  if (!entry) return;
+  const rangeBeforeLocal = findNodeRange(entry.block.content, variant);
+  if (!rangeBeforeLocal) return;
+  const blockBase = flatOffsetOfBlockContent(entry.blockIndex);
+  const oldStart = blockBase + rangeBeforeLocal.start;
+  const oldEnd = blockBase + rangeBeforeLocal.end;
+  const oldLen = oldEnd - oldStart;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  pushHistory('cycle');
+  variant.active = (variant.active + dir + variant.variants.length) % variant.variants.length;
+  const newLen = contentLength(variant.variants[variant.active]);
+  const delta = newLen - oldLen;
+  function remap(pos) {
+    if (pos <= oldStart) return pos;
+    if (pos >= oldEnd) return pos + delta;
+    return oldStart + Math.min(pos - oldStart, newLen);
+  }
+  render();
+  const [newStart, newEnd] = clampSelection(remap(start), remap(end));
+  editor.setSelectionRange(newStart, newEnd);
+  refreshHoverFromLastPointer();
+}
+function cycleBlockVariantPreservingSelection(entry, dir) {
+  if (!entry || !entry.group || entry.group.variants.length < 2) return;
+  const block = entry.block;
+  const oldStart = flatOffsetOfBlockContent(entry.blockIndex);
+  const oldLen = contentLength(activeBlockContent(block));
+  const oldEnd = oldStart + oldLen;
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  pushHistory('cycle-block');
+  entry.group.active = (entry.group.active + dir + entry.group.variants.length) % entry.group.variants.length;
+  syncActiveBlockContent(block);
+  const newLen = contentLength(activeBlockContent(block));
+  const delta = newLen - oldLen;
+  const remap = (pos) => pos <= oldStart ? pos : pos >= oldEnd ? pos + delta : oldStart + Math.min(pos - oldStart, newLen);
+  render();
+  const [newStart, newEnd] = clampSelection(remap(start), remap(end));
+  editor.setSelectionRange(newStart, newEnd);
+  refreshHoverFromLastPointer();
+}
+function setBlockVariantActive(entry, altIndex, preserveSelection = true) {
+  if (!entry || !entry.group || !entry.group.variants[altIndex] || entry.group.active === altIndex) return;
+  const block = entry.block;
+  const oldStart = flatOffsetOfBlockContent(entry.blockIndex);
+  const oldLen = contentLength(activeBlockContent(block));
+  const oldEnd = oldStart + oldLen;
+  const start = editor.selectionStart, end = editor.selectionEnd;
+  pushHistory('cycle-block');
+  entry.group.active = altIndex;
+  syncActiveBlockContent(block);
+  const newLen = contentLength(activeBlockContent(block));
+  const delta = newLen - oldLen;
+  const remap = (pos) => !preserveSelection ? oldStart : pos <= oldStart ? pos : pos >= oldEnd ? pos + delta : oldStart + Math.min(pos - oldStart, newLen);
+  render();
+  if (preserveSelection) { const [newStart, newEnd] = clampSelection(remap(start), remap(end)); editor.setSelectionRange(newStart, newEnd); }
+  refreshHoverFromLastPointer();
+}
+function beginNewBlockVariant(block, blockIndex) {
+  if (!block || block.kind !== 'paragraph' || !contentLength(activeBlockContent(block))) return;
+  const group = blockHasVariants(block) ? block.variantGroup : createBlockVariantGroup(block);
+  const next = { id: genId('bvv'), content: cloneContentWithNewIds(activeBlockContent(block)) };
+  group.variants.push(next);
+  group.active = group.variants.length - 1;
+  syncActiveBlockContent(block);
+  ui.pendingBlockVariantReplacement = { blockId: block.id, variantId: next.id };
+  render();
+  const start = flatOffsetOfBlockContent(blockIndex);
+  const end = start + contentLength(activeBlockContent(block));
+  editor.focus(); editor.setSelectionRange(start, end);
+  refreshHoverFromLastPointer();
+}
+function replacePendingBlockVariant(entry, text, selectionStart, selectionEnd) {
+  const pending = ui.pendingBlockVariantReplacement;
+  if (!pending || !entry || pending.blockId !== entry.block.id) return false;
+  const variant = entry.group.variants.find(v => v.id === pending.variantId);
+  const start = flatOffsetOfBlockContent(entry.blockIndex);
+  const end = start + contentLength(activeBlockContent(entry.block));
+  if (!variant || selectionStart !== start || selectionEnd !== end) return false;
+  variant.content = text ? [{ type: 'text', text }] : [];
+  entry.group.active = entry.group.variants.indexOf(variant);
+  entry.block.content = variant.content;
+  ui.pendingBlockVariantReplacement = null;
+  render(); setCaret(start + text.length);
+  return true;
+}
+
 function ghostRange(block, start, end) {
-  const [left, mid, right] = splitRange(block.content, start, end);
+  const [left, mid, right] = splitRange(activeBlockContent(block), start, end);
   if (!mid.length) return;
   block.content = normalize([...left, { type: 'ghost', id: genId('g'), content: mid }, ...right]);
 }
 function reviveRange(block, start, end) {
-  const [left, mid, right] = splitRange(block.content, start, end);
+  const [left, mid, right] = splitRange(activeBlockContent(block), start, end);
   const unwrap = (nodes) => nodes.flatMap(n => n.type === 'ghost' ? unwrap(n.content) : [n]);
   block.content = normalize([...left, ...unwrap(mid), ...right]);
 }
@@ -948,6 +1573,129 @@ function withSelection(fn, key) {
 }
 const doGhost = () => withSelection(ghostRange, 'ghost');
 const doRevive = () => withSelection(reviveRange, 'revive');
+
+/* HOVER INTERACTIONS */
+const VARIANT_HOVER_DELAY = 60;
+const GHOST_HOVER_DELAY = 300;
+const GHOST_REVEAL_DURATION = 220;
+
+function closestInteractiveSpan(node, className) {
+  let el = node && node.nodeType === Node.ELEMENT_NODE ? node : node && node.parentElement;
+  while (el && el !== overlayInner) {
+    if (el.classList && el.classList.contains(className)) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+function spanAtPoint(x, y) {
+  const oldEditorPointerEvents = editor.style.pointerEvents;
+  const oldOverlayPointerEvents = overlay.style.pointerEvents;
+  editor.style.pointerEvents = 'none';
+  overlay.style.pointerEvents = 'auto';
+  let hit = null;
+  try { hit = document.elementFromPoint(x, y); }
+  finally { editor.style.pointerEvents = oldEditorPointerEvents; overlay.style.pointerEvents = oldOverlayPointerEvents; }
+  if (!hit || !overlayInner.contains(hit)) return { variant: null, ghost: null, blockVariant: null };
+  return {
+    variant: closestInteractiveSpan(hit, 'variant'),
+    ghost: closestInteractiveSpan(hit, 'ghost'),
+    blockVariant: closestInteractiveSpan(hit, 'block-variant'),
+  };
+}
+function clearHoverTimers() {
+  clearTimeout(ui.hoverTimer); ui.hoverTimer = null;
+  clearTimeout(ui.ghostRevealTimer); ui.ghostRevealTimer = null;
+  clearTimeout(ui.blockHoverTimer); ui.blockHoverTimer = null;
+}
+function clearHoverState() {
+  clearHoverTimers();
+  ui.hoveredVariantId = null; ui.hoveredGhostId = null; ui.hoveredBlockId = null;
+  ui.hoveredVariantVisible = false; ui.hoveredBlockVisible = false;
+  overlayInner.querySelectorAll('.variant.is-hovered, .ghost.is-hovered, .block-variant.is-hovered').forEach(el => el.classList.remove('is-hovered'));
+}
+function setHoveredVariant(el) {
+  const id = el && el.dataset ? el.dataset.variantId : null;
+  if (!id) return clearHoverState();
+  ui.hoveredGhostId = null; ui.hoveredBlockId = null; ui.hoveredBlockVisible = false;
+  overlayInner.querySelectorAll('.ghost.is-hovered, .block-variant.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+  clearTimeout(ui.ghostRevealTimer); ui.ghostRevealTimer = null; clearTimeout(ui.blockHoverTimer); ui.blockHoverTimer = null;
+  if (ui.hoveredVariantId === id && ui.hoveredVariantVisible) { el.classList.add('is-hovered'); return; }
+  clearTimeout(ui.hoverTimer); ui.hoverTimer = null;
+  overlayInner.querySelectorAll('.variant.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+  ui.hoveredVariantId = id; ui.hoveredVariantVisible = false;
+  ui.hoverTimer = setTimeout(() => { if (ui.hoveredVariantId === id && document.body.contains(el)) { el.classList.add('is-hovered'); ui.hoveredVariantVisible = true; } }, VARIANT_HOVER_DELAY);
+}
+function setHoveredGhost(el) {
+  const id = el && el.dataset ? el.dataset.ghostId : null;
+  if (!id) return clearHoverState();
+  ui.hoveredVariantId = null; ui.hoveredBlockId = null; ui.hoveredVariantVisible = false; ui.hoveredBlockVisible = false;
+  overlayInner.querySelectorAll('.variant.is-hovered, .block-variant.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+  clearTimeout(ui.hoverTimer); ui.hoverTimer = null; clearTimeout(ui.blockHoverTimer); ui.blockHoverTimer = null;
+  if (ui.hoveredGhostId === id && (el.classList.contains('is-hovered') || ui.ghostRevealTimer)) return;
+  clearTimeout(ui.ghostRevealTimer); ui.ghostRevealTimer = null;
+  overlayInner.querySelectorAll('.ghost.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+  ui.hoveredGhostId = id;
+  ui.ghostRevealTimer = setTimeout(() => { if (ui.hoveredGhostId === id && document.body.contains(el)) { el.style.setProperty('--ghost-reveal-duration', GHOST_REVEAL_DURATION + 'ms'); el.classList.add('is-hovered'); } }, GHOST_HOVER_DELAY);
+}
+function setHoveredBlockVariant(el) {
+  const id = el && el.dataset ? el.dataset.blockId : null;
+  if (!id) return clearHoverState();
+  ui.hoveredVariantId = null; ui.hoveredGhostId = null; ui.hoveredVariantVisible = false;
+  overlayInner.querySelectorAll('.variant.is-hovered, .ghost.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+  clearTimeout(ui.hoverTimer); ui.hoverTimer = null; clearTimeout(ui.ghostRevealTimer); ui.ghostRevealTimer = null;
+  if (ui.hoveredBlockId !== id) {
+    overlayInner.querySelectorAll('.block-variant.is-hovered').forEach(n => n.classList.remove('is-hovered'));
+    clearTimeout(ui.blockHoverTimer); ui.blockHoverTimer = null;
+    ui.hoveredBlockId = id; ui.hoveredBlockVisible = false;
+  }
+  if (ui.hoveredBlockVisible) { el.classList.add('is-hovered'); return; }
+  if (ui.blockHoverTimer) return;
+  ui.blockHoverTimer = setTimeout(() => { if (ui.hoveredBlockId === id && document.body.contains(el)) { el.classList.add('is-hovered'); ui.hoveredBlockVisible = true; } }, VARIANT_HOVER_DELAY);
+}
+function refreshHoverFromLastPointer() {
+  if (!ui.lastPointer || !overlayInner.isConnected) return;
+  const hit = spanAtPoint(ui.lastPointer.x, ui.lastPointer.y);
+  if (hit.variant) setHoveredVariant(hit.variant);
+  else if (hit.ghost) setHoveredGhost(hit.ghost);
+  else if (hit.blockVariant) setHoveredBlockVariant(hit.blockVariant);
+  else clearHoverState();
+}
+function onEditorPointerMove(e) {
+  ui.lastPointer = { x: e.clientX, y: e.clientY };
+  if (ui.pointerFrame) return;
+  ui.pointerFrame = requestAnimationFrame(() => { ui.pointerFrame = 0; refreshHoverFromLastPointer(); });
+}
+function hoveredVariantNode() {
+  if (!ui.hoveredVariantId) return null;
+  const entry = findVariantEntry(doc, ui.hoveredVariantId);
+  return entry ? entry.variant : null;
+}
+function findVariantEntry(document, id) {
+  function walk(nodes) {
+    for (const node of nodes) {
+      if (node.type === 'variant') {
+        if (node.id === id) return node;
+        for (const variant of node.variants) { const r = walk(variant); if (r) return r; }
+      } else if (node.type === 'ghost' || node.type === 'mark') {
+        const r = walk(node.content); if (r) return r;
+      }
+    }
+    return null;
+  }
+  for (let blockIndex = 0; blockIndex < document.blocks.length; blockIndex++) {
+    const variant = walk(activeBlockContent(document.blocks[blockIndex]));
+    if (variant) return { block: document.blocks[blockIndex], blockIndex, variant };
+  }
+  return null;
+}
+function findBlockVariantEntry(document, id) {
+  if (!id) return null;
+  for (let blockIndex = 0; blockIndex < document.blocks.length; blockIndex++) {
+    const block = document.blocks[blockIndex];
+    if (block.id === id && blockHasVariants(block)) return { block, blockIndex, group: block.variantGroup };
+  }
+  return null;
+}
 
 /* EXPORT */
 
@@ -964,11 +1712,15 @@ document.getElementById('export').addEventListener('click', exportMarkdown);
 
 /* THEME */
 
-const themeBtn = document.getElementById('theme');
 function paintThemeButton() {
   const dark = document.documentElement.dataset.theme === 'dark';
-  themeBtn.textContent = dark ? 'Light mode' : 'Dark mode';
-  themeBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  const target = dark ? 'light' : 'dark';
+  const label = dark ? 'Light mode' : 'Dark mode';
+  const hint = dark ? 'Switch to light' : 'Switch to dark';
+  themeLabel.textContent = label;
+  themeHint.textContent = hint;
+  themeBtn.setAttribute('aria-label', `Switch to ${target} mode`);
+  themeBtn.title = `Switch to ${target} mode`;
 }
 themeBtn.addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -979,7 +1731,35 @@ themeBtn.addEventListener('click', () => {
 });
 paintThemeButton();
 
+/* WORD COUNT HOVER */
+
+countEl.addEventListener('mouseenter', () => {
+  countEl.classList.add('is-hovered');
+  countDetail.classList.add('visible');
+});
+countEl.addEventListener('mouseleave', () => {
+  countEl.classList.remove('is-hovered');
+  countDetail.classList.remove('visible');
+});
+
 /* KEYBOARD */
+
+window.addEventListener('keydown', (e) => {
+  if (ui.hoveredBlockId && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    const entry = findBlockVariantEntry(doc, ui.hoveredBlockId);
+    if (entry && entry.group.variants.length > 1) {
+      e.preventDefault();
+      cycleBlockVariantPreservingSelection(entry, e.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+  }
+  if (ui.hoveredVariantId && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    const v = hoveredVariantNode();
+    e.preventDefault();
+    if (v && v.variants.length > 1) cycleVariantPreservingSelection(v, e.key === 'ArrowRight' ? 1 : -1);
+    return;
+  }
+});
 
 editor.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
@@ -1038,14 +1818,21 @@ function showCtxMenu(x, y, items) {
   ctxmenu.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
   ctxOpen = true;
 }
+function paragraphVariantPreview(variant) {
+  return truncateWords(contentPlainText(variant.content, true), 7) || '(empty)';
+}
+function setParagraphVariantActive(entry, altIndex) {
+  setBlockVariantActive(entry, altIndex, true);
+}
+
 function setVariantActive(block, blockIndex, variant, altIndex, caretOffsetInBlock) {
-  const range = findNodeRange(block.content, variant);
+  const range = findNodeRange(activeBlockContent(block), variant);
   if (!range) return;
   pushHistory('cycle');
   const rel = caretOffsetInBlock - range.start;
   variant.active = altIndex;
   render();
-  const newRange = findNodeRange(block.content, variant);
+  const newRange = findNodeRange(activeBlockContent(block), variant);
   if (!newRange) return;
   setCaret(flatOffsetOfBlockContent(blockIndex) + newRange.start + Math.max(0, Math.min(rel, contentLength(variant.variants[altIndex]))));
 }
@@ -1055,37 +1842,49 @@ function caretFromPoint(x, y) {
   if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) hit = { node: p.offsetNode, offset: p.offset }; }
   else if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) hit = { node: r.startContainer, offset: r.startOffset }; }
   if (!hit || !hit.node || !overlayInner.contains(hit.node)) return null;
-  const walker = document.createTreeWalker(overlayInner, NodeFilter.SHOW_TEXT);
-  let count = 0, cur;
-  while ((cur = walker.nextNode())) {
-    if (cur === hit.node) return count + hit.offset;
-    count += cur.textContent.length;
-  }
-  return null;
+  const el = hit.node.nodeType === Node.ELEMENT_NODE ? hit.node : hit.node.parentElement;
+  const shell = el && el.closest ? el.closest('.block-shell') : null;
+  if (!shell) return null;
+  const blockIndex = Number(shell.dataset.blockIndex);
+  if (!Number.isInteger(blockIndex) || !doc.blocks[blockIndex]) return null;
+  const range = document.createRange();
+  try { range.selectNodeContents(shell); range.setEnd(hit.node, hit.offset); return flatOffsetOfBlockStart(blockIndex) + range.toString().length; }
+  catch (err) { return flatOffsetOfBlockStart(blockIndex); }
 }
 
 editor.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const s0 = editor.selectionStart, e0 = editor.selectionEnd;
+  const hit = spanAtPoint(e.clientX, e.clientY);
   const clickPos = caretFromPoint(e.clientX, e.clientY);
   if (clickPos != null && (clickPos < s0 || clickPos > e0)) { editor.focus(); setCaret(clickPos); }
-
   const s = editor.selectionStart, en = editor.selectionEnd;
   const loc = locateFlat(s);
   const items = [];
+  let paragraphVariationAction = null;
+  const blockHit = hit.blockVariant ? findBlockVariantEntry(doc, hit.blockVariant.dataset.blockId) : null;
+  const blockEntry = blockHit || (loc.block && blockHasVariants(loc.block) && loc.block.kind === 'paragraph' ? findBlockVariantEntry(doc, loc.block.id) : null);
 
-  const v = variantAtOffset(loc.block.content, loc.offsetInBlock);
+  if (blockEntry) {
+    const group = blockEntry.group;
+    items.push({ type: 'header', label: `Paragraph variations (${group.variants.length})` });
+    group.variants.forEach((v, i) => {
+      const full = contentPlainText(v.content, true);
+      items.push({ label: paragraphVariantPreview(v), title: full || '(empty)', active: i === group.active, action: () => setParagraphVariantActive(blockEntry, i) });
+    });
+    paragraphVariationAction = () => beginNewBlockVariant(blockEntry.block, blockEntry.blockIndex);
+  } else if (loc.block && loc.block.kind === 'paragraph' && contentLength(activeBlockContent(loc.block)) > 0 && s === en && !loc.inPrefix) {
+    paragraphVariationAction = () => beginNewBlockVariant(loc.block, loc.blockIndex);
+  }
+
+  const v = variantAtOffset(activeBlockContent(loc.block), loc.offsetInBlock);
   if (v) {
     items.push({ type: 'header', label: v.variants.length > 1 ? `Variations (${v.variants.length})` : 'Variation' });
     v.variants.forEach((alt, i) => {
       const full = flattenContent(alt);
-      items.push({
-        label: truncate(full.replace(/\n/g, ' ⏎ '), 64) || '(empty)', title: full || '(empty)',
-        active: i === v.active,
-        action: () => setVariantActive(loc.block, loc.blockIndex, v, i, loc.offsetInBlock),
-      });
+      items.push({ label: truncate(full.replace(/\n/g, ' ⏎ '), 64) || '(empty)', title: full || '(empty)', active: i === v.active, action: () => setVariantActive(loc.block, loc.blockIndex, v, i, loc.offsetInBlock) });
     });
-    const vRange = findNodeRange(loc.block.content, v);
+    const vRange = findNodeRange(activeBlockContent(loc.block), v);
     if (vRange) {
       const base = flatOffsetOfBlockContent(loc.blockIndex);
       items.push({ add: true, label: 'Write a new variation', action: () => selectFlatRange(base + vRange.start, base + vRange.end) });
@@ -1093,48 +1892,55 @@ editor.addEventListener('contextmenu', (e) => {
     items.push({ type: 'divider' });
   } else if (s === en && !loc.inPrefix) {
     const word = wordRangeAt(editor.value, s);
-    if (word) {
-      items.push({
-        add: true, label: `New variation of ‘${truncate(editor.value.slice(word.start, word.end), 32)}’`,
-        action: () => selectFlatRange(word.start, word.end),
-      });
-    }
+    if (word) items.push({ add: true, label: `New variation of ‘${truncate(editor.value.slice(word.start, word.end), 32)}’`, action: () => selectFlatRange(word.start, word.end) });
     const sent = sentenceRangeAt(editor.value, s);
-    if (sent && (!word || sent.end - sent.start > word.end - word.start)) {
-      items.push({ add: true, label: 'New variation of this sentence', action: () => selectFlatRange(sent.start, sent.end) });
-    }
+    if (sent && (!word || sent.end - sent.start > word.end - word.start)) items.push({ add: true, label: 'New variation of this sentence', action: () => selectFlatRange(sent.start, sent.end) });
   } else if (s !== en) {
     const t = trimSelection(s, en);
     if (t) items.push({ add: true, label: 'Write a new variation', action: () => selectFlatRange(t[0], t[1]) });
   }
 
   if (s !== en) items.push({ plain: true, label: 'Ghost this text', shortcut: 'Ctrl+G', action: doGhost });
-  const ghosts = ghostsAtOffset(loc.block.content, loc.offsetInBlock);
-  if (ghosts.length) {
-    items.push({
-      plain: true, label: 'Revive this text', shortcut: 'Ctrl+Shift+G',
-      action: () => {
-        loc.block.content = normalize(reviveGhostById(loc.block.content, ghosts[0].id));
-        render(); setCaret(s);
-      },
-    });
+  const ghosts = ghostsAtOffset(activeBlockContent(loc.block), loc.offsetInBlock);
+  if (ghosts.length) items.push({ plain: true, label: 'Revive this text', shortcut: 'Ctrl+Shift+G', action: () => { pushHistory('revive'); loc.block.content = normalize(reviveGhostById(activeBlockContent(loc.block), ghosts[0].id)); render(); setCaret(s); } });
+
+  if (paragraphVariationAction) {
+    while (items.length && items[items.length - 1].type === 'divider') items.pop();
+    if (items.length) items.push({ type: 'divider' });
+    items.push({ add: true, label: 'New variation of this paragraph', action: paragraphVariationAction });
   }
+
   while (items.length && items[items.length - 1].type === 'divider') items.pop();
   if (!items.length) return;
   showCtxMenu(e.clientX, e.clientY, items);
 });
 
 window.addEventListener('mousedown', () => { if (ctxOpen) closeCtxMenu(); }, true);
-editor.addEventListener('scroll', () => { if (ctxOpen) closeCtxMenu(); });
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ctxOpen) { e.preventDefault(); closeCtxMenu(); } }, true);
-window.addEventListener('resize', () => { syncOverlay(); if (ctxOpen) closeCtxMenu(); });
-window.addEventListener('beforeunload', () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(doc)); } catch (err) {} });
+window.addEventListener('resize', () => { syncOverlay(); if (ctxOpen) closeCtxMenu(); refreshHoverFromLastPointer(); });
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    clearTimeout(saveTimer);
+    const snapshotDoc = { id: doc.id, schemaVersion: DOCUMENT_SCHEMA_VERSION, blocks: doc.blocks };
+    saveQueue = saveQueue.then(() => persistDocumentNow(snapshotDoc)).catch(() => {});
+  }
+});
 
 /* INIT */
 
-render();
-editor.focus();
-setCaret(editor.value.length);
+async function boot() {
+  try {
+    doc = await loadStoredDocument();
+  } catch (err) {
+    doc = localStorageDocument() || newDocument();
+  }
+  ensureDocumentIds(doc);
+  persistenceReady = true;
+  render({ persist: false });
+  editor.focus();
+  setCaret(editor.value.length);
+}
+boot();
 </script>
 </body>
 </html>
